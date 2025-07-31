@@ -193,63 +193,62 @@ class MqttSubscriber extends Command
     }
 
     function processDelayAndPacketLoss($topic, $data, $slaveId)
-{
-    // Mengambil sent_at dari data, jika ada
-    $sent_at = isset($data['timestamp']) ? Carbon::createFromTimestamp($data['timestamp']) : null;
+    {
+        // Mengambil sent_at dari data, jika ada
+        $sent_at = isset($data['timestamp']) ? Carbon::createFromTimestamp($data['timestamp']) : null;
 
-    // Mendefinisikan received_at
-    $received_at = Carbon::now('Asia/Jakarta'); // Mendapatkan waktu saat data diterima
+        // Mendefinisikan received_at
+        $received_at = Carbon::now('Asia/Jakarta'); // Mendapatkan waktu saat data diterima
 
-    // Cek apakah sent_at ada
-    if ($sent_at) {
-        // Menghitung delay hanya jika sent_at ada
-        $delay = $received_at->diffInMilliseconds($sent_at);
-        $this->info("📥 Delay untuk Slave{$slaveId}: {$delay} ms");
+        // Cek apakah sent_at ada
+        if ($sent_at) {
+            // Menghitung delay hanya jika sent_at ada
+            $delay = $received_at->diffInMilliseconds($sent_at);
+            $this->info("📥 Delay untuk Slave{$slaveId}: {$delay} ms");
 
-        // Simpan delay ke database (tanpa topic)
-        SlaveDelay::create([
+            // Simpan delay ke database
+            SlaveDelay::create([
+                'slave_id' => $slaveId,
+                'slave_type' => 'slave' . $slaveId,
+                'topic' => $topic,
+                'delay' => $delay,
+                'sent_at' => $sent_at,
+                'received_at' => $received_at,
+            ]);
+
+            // Menghitung packet loss jika sent_at ada (asumsi tidak ada packet loss jika data diterima dengan sent_at)
+            $packetLossPercentage = 0;  // Tidak ada packet loss jika sent_at ada
+            $this->info("📥 Packet Loss untuk Slave{$slaveId}: {$packetLossPercentage}%");
+        } else {
+            // Jika sent_at tidak ada, beri nilai NULL atau 0 untuk delay
+            $this->warn("⚠️ Tidak ada informasi waktu pengiriman (sent_at) di data!");
+
+            // Simpan nilai default untuk delay
+            SlaveDelay::create([
+                'slave_id' => $slaveId,
+                'slave_type' => 'slave' . $slaveId,
+                'topic' => $topic,
+                'delay' => 0,  // Menggunakan nilai default untuk delay
+                'sent_at' => null,
+                'received_at' => $received_at,
+            ]);
+
+            // Jika tidak ada sent_at, anggap ada packet loss
+            $packetLossPercentage = 100; // Anggap terjadi packet loss jika sent_at tidak ada
+            $this->info("📥 Packet Loss untuk Slave{$slaveId}: {$packetLossPercentage}%");
+        }
+
+        // Simpan packet loss ke database
+        SlavePacketLoss::create([
             'slave_id' => $slaveId,
             'slave_type' => 'slave' . $slaveId,
-            'delay' => $delay,
+            'topic' => $topic,
+            'packet_loss_percentage' => $packetLossPercentage,
+            'total_packets' => 1,  // Anda dapat mengganti dengan logika yang sesuai untuk total packets
+            'lost_packets' => ($packetLossPercentage == 100) ? 1 : 0,
+            'sequence_number' => 1,  // Anda dapat mengganti dengan logika yang sesuai untuk sequence number
             'sent_at' => $sent_at,
             'received_at' => $received_at,
         ]);
-
-        // Menghitung packet loss jika sent_at ada (asumsi tidak ada packet loss jika data diterima dengan sent_at)
-        $packetLossPercentage = 0;  // Tidak ada packet loss jika sent_at ada
-        $this->info("📥 Packet Loss untuk Slave{$slaveId}: {$packetLossPercentage}%");
-    } else {
-        // Jika sent_at tidak ada, beri nilai NULL atau 0 untuk delay
-        $this->warn("⚠️ Tidak ada informasi waktu pengiriman (sent_at) di data!");
-
-        // Simpan nilai default untuk delay (tanpa topic)
-        SlaveDelay::create([
-            'slave_id' => $slaveId,
-            'slave_type' => 'slave' . $slaveId,
-            'delay' => 0,  // Menggunakan nilai default untuk delay
-            'sent_at' => null,
-            'received_at' => $received_at,
-        ]);
-
-        // Jika tidak ada sent_at, anggap ada packet loss
-        $packetLossPercentage = 100; // Anggap terjadi packet loss jika sent_at tidak ada
-        $this->info("📥 Packet Loss untuk Slave{$slaveId}: {$packetLossPercentage}%");
     }
-
-    // Simpan packet loss ke database (tanpa topic)
-    SlavePacketLoss::create([
-        'slave_id' => $slaveId,
-        'slave_type' => 'slave' . $slaveId,
-        'packet_loss_percentage' => $packetLossPercentage,
-        'total_packets' => 1,  // Anda dapat mengganti dengan logika yang sesuai untuk total packets
-        'lost_packets' => ($packetLossPercentage == 100) ? 1 : 0,
-        'sequence_number' => 1,  // Anda dapat mengganti dengan logika yang sesuai untuk sequence number
-        'sent_at' => $sent_at,
-        'received_at' => $received_at,
-    ]);
-
-    // Anda masih dapat menggunakan `topic` untuk logika lebih lanjut jika diperlukan
-    $this->info("📥 Data diterima dari topik: {$topic}");
-}
-
 }

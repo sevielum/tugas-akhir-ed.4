@@ -61,7 +61,7 @@
                                 <th class="text-center">Waktu Kirim</th>
                                 <th class="text-center">Waktu Diterima</th>
                                 <th class="text-center">Delay (ms)</th>
-                                <th class="text-center">Data Hilang</th>
+                                <th class="text-center">Packet Loss</th>
                             </tr>
                         </thead>
                         <tbody>

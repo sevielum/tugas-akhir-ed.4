@@ -20,8 +20,8 @@ class MonitoringKomunikasiController extends Controller
         $tanggal = $request->input('tanggal', Carbon::now()->toDateString());
 
         // Mengambil data dari tabel slave_packet_losses dan slave_delays berdasarkan tanggal
-        $dataPacketLoss = SlavePacketLoss::whereDate('sent_at', $tanggal)->orderBy('sent_at','DESC')->get(); // Data Packet Loss
-        $dataDelay = SlaveDelay::whereDate('sent_at', $tanggal)->orderBy('sent_at','DESC')->get(); // Data Delay
+        $dataPacketLoss = SlavePacketLoss::whereDate('sent_at', $tanggal)->orderBy('sent_at','DESC')->whereNotNull('lost_packets')->get(); // Data Packet Loss
+        $dataDelay = SlaveDelay::whereDate('sent_at', $tanggal)->orderBy('sent_at','DESC')->whereNotNull('delay')->get(); // Data Delay
 
         // Memetakan relasi ke Slave1 atau Slave2 secara eksplisit
         $dataPacketLoss->map(function ($item) {
